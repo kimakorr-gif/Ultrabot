@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ultrabot-config
+  namespace: ultrabot
+data:
+  telegram_channel_id: "-1001234567890"
+  redis_url: "redis://redis:6379/0"
+  rss_check_interval: "300"
+  min_score_threshold: "8"
+  publish_delay: "600"
+  log_level: "INFO"
