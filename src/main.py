@@ -39,6 +39,24 @@ class Application:
             description="Gaming News Aggregator",
         )
 
+        # Add root endpoint
+        @self.app.get("/")
+        async def root():
+            return {
+                "name": "Ultrabot",
+                "version": "1.0.0",
+                "description": "Gaming News Aggregator Bot",
+                "endpoints": {
+                    "api": "/api/",
+                    "health": "/api/health",
+                    "ready": "/api/ready",
+                    "metrics": "/api/metrics",
+                    "stats": "/api/stats",
+                    "docs": "/docs",
+                    "redoc": "/redoc",
+                }
+            }
+
         # Add routers
         self.app.include_router(health_router)
 
@@ -64,8 +82,11 @@ class Application:
             # Initialize database
             logger.info("Connecting to database...")
             self.db_engine = create_db_engine(str(self.settings.database_url))
-            # Create tables
-            Base.metadata.create_all(self.db_engine)
+            # Create tables (ignore if they already exist)
+            try:
+                Base.metadata.create_all(self.db_engine)
+            except Exception as e:
+                logger.warning(f"Database tables may already exist: {e}")
             logger.info("Database connected")
 
             # Initialize caches

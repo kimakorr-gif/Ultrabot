@@ -18,13 +18,12 @@ alembic==1.13.0
 
 # Caching & Message Queue
 redis==5.0.1
-aioredis==2.0.1
 
 # RSS Parsing
 feedparser==6.0.10
 
 # Translation
-yandex-cloud==0.1.7
+# yandex-cloud - requires specific setup, install manually if needed
 
 # Content Extraction
 requests==2.31.0

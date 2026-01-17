@@ -2,7 +2,7 @@
 
 from typing import Protocol, runtime_checkable
 
-from ..domain.value_objects.base import LanguagePair
+from ...domain.value_objects.base import LanguagePair
 
 
 @runtime_checkable

@@ -4,8 +4,10 @@ import json
 from logging import getLogger
 from typing import Any, Optional
 
-import aioredis
-from aioredis import Redis
+try:
+    from redis.asyncio import Redis
+except ImportError:
+    Redis = None
 
 from ...application.ports import CachePort
 from ...core.exceptions import CacheError
@@ -23,12 +25,14 @@ class RedisCache(CachePort):
             redis_url: Redis connection URL (e.g., redis://localhost:6379/0)
         """
         self.redis_url = redis_url
-        self.redis: Optional[Redis] = None
+        self.redis: Optional[Any] = None
 
     async def connect(self) -> None:
         """Connect to Redis."""
         try:
-            self.redis = await aioredis.from_url(self.redis_url)
+            if Redis is None:
+                raise CacheError("redis package not installed")
+            self.redis = await Redis.from_url(self.redis_url)
             logger.info("Connected to Redis")
         except Exception as e:
             logger.error(f"Failed to connect to Redis: {e}")

@@ -18,6 +18,26 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api", tags=["health"])
 
 
+@router.get("/")
+async def root() -> dict[str, str]:
+    """Root endpoint - API info.
+
+    Returns:
+        API info
+    """
+    return {
+        "name": "Ultrabot",
+        "version": "1.0.0",
+        "description": "Gaming News Aggregator Bot",
+        "endpoints": {
+            "health": "/api/health",
+            "ready": "/api/ready",
+            "metrics": "/api/metrics",
+            "stats": "/api/stats",
+        }
+    }
+
+
 @router.get("/health")
 async def health_check() -> dict[str, Any]:
     """Liveness probe - simple health check.

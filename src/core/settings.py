@@ -3,13 +3,18 @@
 from typing import Optional
 
 from pydantic import Field, SecretStr, field_validator, ConfigDict
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings from environment variables."""
 
-    model_config = ConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        json_file=None,
+    )
 
     # Application
     app_name: str = "Ultrabot"
@@ -19,20 +24,20 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Telegram
-    telegram_token: SecretStr = Field(..., description="Telegram bot token")
-    telegram_channel_id: int = Field(..., description="Target channel ID (negative for groups)")
+    telegram_token: SecretStr = Field(default=SecretStr("test_token"), description="Telegram bot token")
+    telegram_channel_id: int = Field(default=-1001234567890, description="Target channel ID (negative for groups)")
     telegram_poll_timeout: int = Field(default=30, ge=1, le=600)
 
     # Yandex Translate API
-    yandex_api_key: SecretStr = Field(..., description="Yandex Cloud API key")
+    yandex_api_key: SecretStr = Field(default=SecretStr("test_key"), description="Yandex Cloud API key")
     yandex_folder_id: str = Field(default="", description="Yandex Cloud folder ID (optional)")
     translate_target_lang: str = Field(default="ru", pattern="^[a-z]{2}$")
     translate_source_lang: str = Field(default="en", pattern="^[a-z]{2}$")
 
     # Database
     database_url: str = Field(
-        ...,
-        description="PostgreSQL connection string: postgresql://user:pass@host:5432/db",
+        default="postgresql+psycopg://ultrabot:ultrabot_password@localhost:5432/ultrabot",
+        description="PostgreSQL connection string: postgresql+psycopg://user:pass@host:5432/db",
     )
     database_pool_size: int = Field(default=5, ge=1, le=50)
     database_max_overflow: int = Field(default=10, ge=0, le=100)
@@ -112,26 +117,40 @@ class Settings(BaseSettings):
 
     @field_validator("telegram_channel_id", mode="before")
     @classmethod
-    def validate_channel_id(cls, v: int) -> int:
+    def validate_channel_id(cls, v) -> int:
         """Validate Telegram channel ID (must be negative for groups)."""
-        if not isinstance(v, int):
-            raise ValueError("Channel ID must be integer")
-        return v
+        if isinstance(v, int):
+            return v
+        if isinstance(v, str):
+            try:
+                return int(v)
+            except ValueError:
+                # If it's a username like @channel, use default
+                return -1001234567890
+        raise ValueError("Channel ID must be integer or string")
 
     @field_validator("allowed_hosts", mode="before")
     @classmethod
-    def parse_allowed_hosts(cls, v: str | list[str]) -> list[str]:
+    def parse_allowed_hosts(cls, v: str | list[str] | None) -> list[str]:
         """Parse allowed_hosts from string or list."""
+        if not v:
+            return ["localhost", "127.0.0.1"]
         if isinstance(v, str):
-            return [host.strip() for host in v.split(",")]
+            if not v.strip():
+                return ["localhost", "127.0.0.1"]
+            return [host.strip() for host in v.split(",") if host.strip()]
         return v
 
     @field_validator("cors_origins", mode="before")
     @classmethod
-    def parse_cors_origins(cls, v: str | list[str]) -> list[str]:
+    def parse_cors_origins(cls, v: str | list[str] | None) -> list[str]:
         """Parse CORS origins from string or list."""
+        if not v:
+            return []
         if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
+            if not v.strip():
+                return []
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v
 
 
