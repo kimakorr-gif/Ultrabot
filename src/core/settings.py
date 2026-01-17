@@ -2,18 +2,20 @@
 
 from typing import Optional
 
-from pydantic import BaseSettings, Field, SecretStr, validator
-from pydantic.networks import PostgresDsn, RedisDsn
+from pydantic import Field, SecretStr, field_validator, ConfigDict
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     """Application settings from environment variables."""
 
+    model_config = ConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
+
     # Application
     app_name: str = "Ultrabot"
     app_version: str = "1.0.0"
-    environment: str = Field(default="development", regex="^(development|staging|production)$")
-    log_level: str = Field(default="INFO", regex="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
+    environment: str = Field(default="development", pattern="^(development|staging|production)$")
+    log_level: str = Field(default="INFO", pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
     debug: bool = False
 
     # Telegram
@@ -24,11 +26,11 @@ class Settings(BaseSettings):
     # Yandex Translate API
     yandex_api_key: SecretStr = Field(..., description="Yandex Cloud API key")
     yandex_folder_id: str = Field(default="", description="Yandex Cloud folder ID (optional)")
-    translate_target_lang: str = Field(default="ru", regex="^[a-z]{2}$")
-    translate_source_lang: str = Field(default="en", regex="^[a-z]{2}$")
+    translate_target_lang: str = Field(default="ru", pattern="^[a-z]{2}$")
+    translate_source_lang: str = Field(default="en", pattern="^[a-z]{2}$")
 
     # Database
-    database_url: PostgresDsn = Field(
+    database_url: str = Field(
         ...,
         description="PostgreSQL connection string: postgresql://user:pass@host:5432/db",
     )
@@ -37,7 +39,7 @@ class Settings(BaseSettings):
     database_pool_pre_ping: bool = Field(default=True)
 
     # Redis
-    redis_url: RedisDsn = Field(
+    redis_url: str = Field(
         default="redis://localhost:6379/0",
         description="Redis connection string: redis://host:6379/db",
     )
@@ -71,7 +73,7 @@ class Settings(BaseSettings):
     dead_letter_queue_enabled: bool = Field(default=True)
 
     # Deduplication
-    dedup_hash_algorithm: str = Field(default="md5", regex="^(md5|sha256)$")
+    dedup_hash_algorithm: str = Field(default="md5", pattern="^(md5|sha256)$")
     dedup_content_prefix_len: int = Field(default=500, ge=100, le=2000)
     dedup_auto_cleanup_days: int = Field(default=7, ge=1, le=90)
 
@@ -98,7 +100,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = Field(default=[])
 
     # Logging
-    log_format: str = Field(default="json", regex="^(json|text)$")
+    log_format: str = Field(default="json", pattern="^(json|text)$")
     log_to_stdout: bool = Field(default=True)
     log_to_file: bool = Field(default=False)
     log_file_path: str = Field(default="logs/ultrabot.log")
@@ -108,12 +110,7 @@ class Settings(BaseSettings):
     # Graceful Shutdown
     shutdown_timeout: int = Field(default=30, ge=5, le=120, description="Grace period for shutdown")
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-
-    @validator("telegram_channel_id", pre=True)
+    @field_validator("telegram_channel_id", mode="before")
     @classmethod
     def validate_channel_id(cls, v: int) -> int:
         """Validate Telegram channel ID (must be negative for groups)."""
@@ -121,7 +118,7 @@ class Settings(BaseSettings):
             raise ValueError("Channel ID must be integer")
         return v
 
-    @validator("allowed_hosts", pre=True)
+    @field_validator("allowed_hosts", mode="before")
     @classmethod
     def parse_allowed_hosts(cls, v: str | list[str]) -> list[str]:
         """Parse allowed_hosts from string or list."""
@@ -129,7 +126,7 @@ class Settings(BaseSettings):
             return [host.strip() for host in v.split(",")]
         return v
 
-    @validator("cors_origins", pre=True)
+    @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: str | list[str]) -> list[str]:
         """Parse CORS origins from string or list."""
